@@ -17,6 +17,14 @@ class CmdEditor
     @data = IO.readlines(@fn, chomp: true)
   end
 
+  def [] line
+    @data[to_index(line)]
+  end
+
+  def []= line, value
+    @data[to_index(line)] = value
+  end
+
   def find patern, range: nil
     range ||= lines
 

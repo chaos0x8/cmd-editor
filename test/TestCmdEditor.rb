@@ -96,7 +96,7 @@ class TestCmdEditor < Test::Unit::TestCase
       assert_equal(expected, IO.readlines(@tmp.path, chomp: true))
     }
 
-    should('add replace line') {
+    should('replace line') {
       CmdEditor.edit(@tmp.path) { |e|
         e.replace e.find('return 0;'), 'return 0;', 'std::cout << "Hello world!" << std::endl;'
       }
@@ -104,6 +104,26 @@ class TestCmdEditor < Test::Unit::TestCase
       expected = [
         "int main() {",
         "  std::cout << \"Hello world!\" << std::endl;",
+        "}"
+      ]
+
+      assert_equal(expected, IO.readlines(@tmp.path, chomp: true))
+    }
+
+    should('return line') {
+      CmdEditor.open(@tmp.path) { |e|
+        assert_equal('  return 0;', e[e.find('return 0;')])
+      }
+    }
+
+    should('change line') {
+      CmdEditor.edit(@tmp.path) { |e|
+        e[e.find('return 0;')] = "std::cout << \"Hello world!\" << std::endl;"
+      }
+
+      expected = [
+        "int main() {",
+        "std::cout << \"Hello world!\" << std::endl;",
         "}"
       ]
 
