@@ -18,21 +18,46 @@ class CmdEditor
   end
 
   def [] line
-    @data[to_index(line)]
+    if line.respond_to? :each
+      each_index(line).collect { |index|
+        @data[index]
+      }
+    else
+      @data[to_index(line)]
+    end
   end
 
   def []= line, value
-    @data[to_index(line)] = value
+    value = [value].flatten
+
+    indexes = each_index(line).to_a
+    indexes[0..value.size-1].each_with_index { |index, vi|
+      @data[index] = value[vi]
+    } if value.size > 0 and indexes.size > 0
+
+    if indexes.size > value.size
+      indexes[value.size..-1].reverse_each { |index|
+        @data.delete_at(index)
+      }
+    end
+
+    if value.size > indexes.size
+      value[indexes.size..-1].reverse_each { |line|
+        @data.insert(indexes.last+1, line)
+      }
+    end
+
+    nil
   end
 
   def find patern, range: nil
     range ||= lines
 
-    to_range(range).each { |l|
-      return l if @data[l-1].match(patern)
-    }
-
-    nil
+    if patern.kind_of? Array
+      find_range(patern, range: range)
+    else
+      find_single(patern, range: range)
+    end
   end
 
   def self.indent_of text
@@ -44,10 +69,10 @@ class CmdEditor
   end
 
   def self.indent text, indentLevel
-    if indentLevel.kind_of? Integer
-      text.sub(/^\s*/, ' ' * indentLevel)
+    if text.respond_to? :each
+      CmdEditor.indent_range text, indentLevel
     else
-      text
+      CmdEditor.indent_single text, indentLevel
     end
   end
 
@@ -66,13 +91,15 @@ class CmdEditor
   end
 
   def replace line, patern, with
-    index = to_index(line)
-
-    @data[index].sub!(patern, with)
+    each_index(line) { |index|
+      @data[index].sub!(patern, with)
+    }
   end
 
   def delete line
-    @data.delete_at(to_index(line))
+    each_index(line).sort.reverse_each { |index|
+      @data.delete_at(index)
+    }
   end
 
   def update
@@ -81,7 +108,7 @@ class CmdEditor
       content += "#{line}\n"
     }
 
-    IO.write(@fn, content)
+    IO.write(@fn, content) if content != IO.read(@fn)
   end
 
   def lines
@@ -89,6 +116,40 @@ class CmdEditor
   end
 
 private
+  def self.indent_single text, indentLevel
+    if indentLevel.kind_of? Integer
+      text.sub(/^\s*/, ' ' * indentLevel)
+    else
+      text
+    end
+  end
+
+  def self.indent_range text, indentLevel
+    text.collect { |x| CmdEditor.indent_single(x, indentLevel) }
+  end
+
+  def find_single patern, range:
+    to_range(range).each { |l|
+      return l if @data[l-1].match(patern)
+    }
+
+    nil
+  end
+
+  def find_range paterns, range:
+    found = []
+
+    to_range(range).each { |l|
+      found << l if @data[l-1].match(paterns[found.size])
+
+      if found.size == paterns.size
+        return found.first..found.last
+      end
+    }
+
+    nil
+  end
+
   def to_index line
     unless line.kind_of? Integer
       raise ArgumentError.new "Expected line number, but got: #{line}"
@@ -100,6 +161,14 @@ private
       @data.size
     else
       raise ArgumentError.new "Invalid line value: #{line}"
+    end
+  end
+
+  def each_index line, &block
+    if line.respond_to? :each
+      line.collect { |l| to_index(l) }.each(&block)
+    else
+      [to_index(line)].each(&block)
     end
   end
 

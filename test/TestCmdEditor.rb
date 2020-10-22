@@ -43,6 +43,12 @@ class TestCmdEditor < Test::Unit::TestCase
       }
     }
 
+    should('find range') {
+      CmdEditor.open(@tmp.path) { |e|
+        assert_equal(2..3, e.find(['return 0;', '}']))
+      }
+    }
+
     should('find patern not find patern when it is outside of range') {
       CmdEditor.open(@tmp.path) { |e|
         assert_equal(nil, e.find('return 0;', range: 3))
@@ -78,6 +84,10 @@ class TestCmdEditor < Test::Unit::TestCase
       assert_equal(' x ', CmdEditor.indent('    x ', 1))
     }
 
+    should('return indent array') {
+      assert_equal(['  x', '  y'], CmdEditor.indent(['x', ' y'], 2))
+    }
+
     should('add line to file') {
       CmdEditor.edit(@tmp.path) { |e|
         e.insert 1, ['#include <iostream>', '']
@@ -110,9 +120,31 @@ class TestCmdEditor < Test::Unit::TestCase
       assert_equal(expected, IO.readlines(@tmp.path, chomp: true))
     }
 
+    should('replace range') {
+      CmdEditor.edit(@tmp.path) { |e|
+        e.replace e.find(['{', '}']), /(.*)/, '// \1'
+      }
+
+      expected = [ '// int main() {', '//   return 0;', '// }' ]
+
+      assert_equal(expected, IO.readlines(@tmp.path, chomp: true))
+    }
+
     should('return line') {
       CmdEditor.open(@tmp.path) { |e|
         assert_equal('  return 0;', e[e.find('return 0;')])
+      }
+    }
+
+    should('return range') {
+      CmdEditor.open(@tmp.path) { |e|
+        expected = [
+          'int main() {',
+          '  return 0;',
+          '}'
+        ]
+
+        assert_equal(expected, e[e.lines])
       }
     }
 
@@ -128,6 +160,44 @@ class TestCmdEditor < Test::Unit::TestCase
       ]
 
       assert_equal(expected, IO.readlines(@tmp.path, chomp: true))
+    }
+
+    [ "int main() { return 0; }",
+      ["int main() { return 0; }"] ].each_with_index { |data, index|
+
+      should("change bigger range/#{index}") {
+        CmdEditor.edit(@tmp.path) { |e|
+          e[e.lines] = data
+        }
+
+        expected = [
+          "int main() { return 0; }"
+        ]
+
+        assert_equal(expected, IO.readlines(@tmp.path, chomp: true))
+      }
+    }
+
+    [ 'return 0;',
+      ['return 0;'] ].each_with_index { |data, index|
+
+      should("change smaller range/#{index}") {
+        CmdEditor.edit(@tmp.path) { |e|
+          e[e.find(data)] = [
+            '  std::cout << "Hello\n";',
+            '  return 0;'
+          ]
+        }
+
+        expected = [
+          'int main() {',
+          '  std::cout << "Hello\n";',
+          '  return 0;',
+          '}'
+        ]
+
+        assert_equal(expected, IO.readlines(@tmp.path, chomp: true))
+      }
     }
 
     should('add at the end of file') {
@@ -154,6 +224,16 @@ class TestCmdEditor < Test::Unit::TestCase
         "int main() {",
         "}"
       ]
+
+      assert_equal(expected, IO.readlines(@tmp.path, chomp: true))
+    }
+
+    should('delete range from file') {
+      CmdEditor.edit(@tmp.path) { |e|
+        e.delete e.lines
+      }
+
+      expected = []
 
       assert_equal(expected, IO.readlines(@tmp.path, chomp: true))
     }
