@@ -12,9 +12,11 @@ class CmdEditor
     editor.update
   end
 
+  attr_reader :path
+
   def initialize fn
-    @fn = fn
-    @data = IO.readlines(@fn, chomp: true)
+    @path = File.expand_path(fn)
+    @data = IO.readlines(@path, chomp: true)
   end
 
   def [] line
@@ -108,7 +110,7 @@ class CmdEditor
       content += "#{line}\n"
     }
 
-    IO.write(@fn, content) if content != IO.read(@fn)
+    IO.write(@path, content) if content != IO.read(@path)
   end
 
   def lines

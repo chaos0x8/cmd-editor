@@ -13,8 +13,12 @@ file('lib/cmd-editor.rb' => FileList['lib/cmd-editor/*.rb']) { |t|
   IO.write(t.name, d.join("\n"))
 }
 
-Rake::TestTask.new(:test => 'lib/cmd-editor.rb') { |t|
-  t.pattern = "#{File.dirname(__FILE__)}/test/**/Test*.rb"
+task(:test) {
+  files = Dir["#{File.dirname(__FILE__)}/test/**/Test*.rb"]
+  sh 'ruby', *files.collect { |x| ['-e', "require '#{File.expand_path(x)}'"] }.flatten
+
+  files = Dir["#{File.dirname(__FILE__)}/test/**/*_spec.rb"]
+  sh 'rspec', *files, '-f', 'd'
 }
 
 desc 'Generates require all file'

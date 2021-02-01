@@ -24,12 +24,6 @@ class TestCmdEditor < Test::Unit::TestCase
       @tmp.unlink
     }
 
-    should('return number of lines') {
-      CmdEditor.open(@tmp.path) { |e|
-        assert_equal(1..3, e.lines)
-      }
-    }
-
     should('find patern') {
       CmdEditor.open(@tmp.path) { |e|
         assert_equal(2, e.find(/return \d;/))
@@ -86,24 +80,6 @@ class TestCmdEditor < Test::Unit::TestCase
 
     should('return indent array') {
       assert_equal(['  x', '  y'], CmdEditor.indent(['x', ' y'], 2))
-    }
-
-    should('add line to file') {
-      CmdEditor.edit(@tmp.path) { |e|
-        e.insert 1, ['#include <iostream>', '']
-        e.insert e.find('return 0;'), 'std::cout << "Hello world!" << std::endl;', indentMode: :next
-      }
-
-      expected = [
-        "#include <iostream>",
-        "",
-        "int main() {",
-        "  std::cout << \"Hello world!\" << std::endl;",
-        "  return 0;",
-        "}"
-      ]
-
-      assert_equal(expected, IO.readlines(@tmp.path, chomp: true))
     }
 
     should('replace line') {
@@ -200,21 +176,6 @@ class TestCmdEditor < Test::Unit::TestCase
       }
     }
 
-    should('add at the end of file') {
-      CmdEditor.edit(@tmp.path) { |e|
-        e.insert -1, '// Bye'
-      }
-
-      expected = [
-        "int main() {",
-        "  return 0;",
-        "}",
-        "// Bye"
-      ]
-
-      assert_equal(expected, IO.readlines(@tmp.path, chomp: true))
-    }
-
     should('delete line from file') {
       CmdEditor.edit(@tmp.path) { |e|
         e.delete e.find('return 0;')
@@ -236,14 +197,6 @@ class TestCmdEditor < Test::Unit::TestCase
       expected = []
 
       assert_equal(expected, IO.readlines(@tmp.path, chomp: true))
-    }
-
-    should('raise when insert at wrong line') {
-      CmdEditor.edit(@tmp.path) { |e|
-        assert_raise(ArgumentError) { e.insert 0, '' }
-        assert_raise(ArgumentError) { e.insert 4, '' }
-        assert_raise(ArgumentError) { e.insert 72, '' }
-      }
     }
 
     should('raise when delete at wrong line') {
